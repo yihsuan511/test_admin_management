@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理員登入</title>
+<style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+        font-family:'Helvetica Neue',sans-serif;
+        display:flex; justify-content:center; align-items:center; min-height:100vh; background:#f8f9fa;
+    }
+    .login-container { 
+        background:#fff; padding:40px; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,0.2); 
+        width:90%; max-width:400px; 
+    }
+    .login-header { text-align:center; margin-bottom:30px; }
+    .login-header h1 { font-size:28px; color:#2c3e50; margin-bottom:8px; }
+    .login-header p { color:#6c757d; font-size:14px; }
+    .form-group { margin-bottom:20px; }
+    .form-group label { display:block; margin-bottom:8px; color:#2c3e50; font-weight:500; font-size:14px; }
+    .form-group input { width:100%; padding:12px 16px; border:2px solid #e9ecef; border-radius:8px; font-size:15px; }
+    .loginBtn { width:100%; padding:14px; background:#007bff; color:#fff; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:pointer; }
+    .loginBtn:hover { background:#0056b3; }
+    .error-message { 
+        background:#f8d7da; color:#721c24; padding:12px; border-radius:8px; margin-bottom:20px; font-size:14px; display:none; 
+    }
+    .error-message.show { display:block; }
+</style>
+</head>
+<body>
+<div class="login-container">
+    <div class="login-header">
+        <h1>🔐 管理員登入</h1>
+        <p>訂單管理系統</p>
+    </div>
+
+    <div id="errorMessage" class="error-message"></div>
+
+    <form id="loginForm">
+        <div class="form-group">
+            <label for="username">帳號</label>
+            <input type="text" id="username" name="username" required placeholder="請輸入管理員帳號">
+        </div>
+        <div class="form-group">
+            <label for="password">密碼</label>
+            <input type="password" id="password" name="password" required placeholder="請輸入密碼">
+        </div>
+        <button type="submit" id="loginBtn" class="loginBtn">登入</button>
+    </form>
+</div>
+
+<script>
+const API_BASE_URL = 'https://test-node-js-e6du.onrender.com/api';
+
+document.addEventListener('DOMContentLoaded', () => {
+    const loginForm = document.getElementById('loginForm');
+    const loginBtn = document.getElementById('loginBtn');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const errorMessage = document.getElementById('errorMessage');
+
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value.trim();
+
+        // 清除先前錯誤訊息
+        errorMessage.textContent = '';
+        errorMessage.classList.remove('show');
+
+        if (!username || !password) {
+            showError('帳號和密碼為必填');
+            return;
+        }
+
+        loginBtn.disabled = true;
+        loginBtn.textContent = '登入中...';
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP 錯誤: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('API 回傳:', data);
+
+            // 檢查 token
+            if (!data.token) {
+                showError(data.message || '帳號或密碼錯誤');
+                loginBtn.disabled = false;
+                loginBtn.textContent = '登入';
+                return;
+            }
+
+            // 登入成功，儲存 token 與帳號
+            sessionStorage.setItem('adminToken', data.token);
+            sessionStorage.setItem('adminUsername', data.admin?.username || username);
+
+            loginBtn.textContent = '✅ 登入成功！跳轉中...';
+
+            // 半秒後跳轉
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 500);
+
+        } catch (err) {
+            console.error(err);
+            showError(err.message || '伺服器錯誤');
+            loginBtn.disabled = false;
+            loginBtn.textContent = '登入';
+        }
+    });
+
+    function showError(msg) {
+        errorMessage.textContent = msg;
+        errorMessage.classList.add('show');
+        setTimeout(() => { errorMessage.classList.remove('show'); }, 3000);
+    }
+});
+</script>
+</body>
+</html>
