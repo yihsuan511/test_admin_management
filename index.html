@@ -636,6 +636,19 @@
                 <p>歷史訂單</p>
             </div>
         </div>
+        <!-- 控制面板
+        <div class="controls">
+            <div class="filter-buttons">
+                <button class="filter-btn active" data-filter="all">全部訂單</button>
+                <button class="filter-btn" data-filter="pending">待處理</button>
+                <button class="filter-btn" data-filter="preparing">製作中</button> -->
+                <!-- <button class="filter-btn" data-filter="pending_payment">待結帳</button>
+                <button class="filter-btn" data-filter="completed">已完成</button>
+                <button class="filter-btn" data-filter="history">歷史訂單</button>
+            </div>
+            <button class="refresh-btn" onclick="loadOrders()">🔄 重新整理</button>
+        </div> -->
+       
         <div class="controls">
             <div class="filter-buttons">
                 <button class="filter-btn" data-filter="all">全部訂單</button>
@@ -1446,96 +1459,7 @@ async function assignTableFromDropdown(orderId) {
             }
         }
 
-        // 1. 修復 filterOrders 函數：讓它能變出報表按鈕
-        function filterOrders(filterType) {
-            currentFilter = filterType;
-            console.log('目前篩選模式:', filterType);
-
-            // 更新 CSS 樣式
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.getAttribute('data-filter') === filterType);
-            });
-
-            // 動態產生報表按鈕區
-            const toolsDiv = document.getElementById('advanced-tools');
-            if (filterType === 'all') {
-                toolsDiv.innerHTML = `
-                    <button class="status-btn" style="background:#28a745; color:white; margin-right:10px; cursor:pointer; border:none; border-radius:5px; padding:10px;" onclick="showRevenueReport()">📊 查看今日報表分析</button>
-                    <button class="status-btn" style="background:#17a2b8; color:white; margin-right:10px; cursor:pointer; border:none; border-radius:5px; padding:10px;" onclick="exportDailyReport()">📥 匯出今日CSV</button>
-                    <button class="status-btn" style="background:#ffc107; color:black; cursor:pointer; border:none; border-radius:5px; padding:10px;" onclick="calculateTopItems()">👑 產出人氣推薦</button>
-                `;
-            } else {
-                toolsDiv.innerHTML = ''; // 非總覽模式則隱藏
-            }
-
-            renderOrders(); // 刷新下方的訂單卡片
-        }
-
-        // 2. 實作報表分析彈窗
-        function showRevenueReport() {
-            const totalRevenue = orders.reduce((sum, o) => sum + Number(o.total_price || 0), 0);
-            const orderCount = orders.length;
-            const completedCount = orders.filter(o => o.status === 'completed').length;
-            
-            const reportHtml = `
-                <div id="reportModal" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:30px; border-radius:15px; box-shadow:0 0 50px rgba(0,0,0,0.5); z-index:10000; text-align:center; min-width:320px;">
-                    <h2 style="color:#2c3e50; margin-bottom:15px;">📊 今日收銀概況</h2>
-                    <div style="background:#f8f9fa; padding:15px; border-radius:10px; margin-bottom:15px; text-align:left;">
-                        <p>總預計營收：<strong style="color:#28a745; font-size:22px;">NT$ ${totalRevenue.toLocaleString()}</strong></p>
-                        <hr style="margin:10px 0; border:0; border-top:1px solid #ddd;">
-                        <p>總訂單數：<strong>${orderCount} 筆</strong></p>
-                        <p>已完成數：<strong style="color:#007bff;">${completedCount} 筆</strong></p>
-                    </div>
-                    <button onclick="this.parentElement.remove()" style="width:100%; padding:12px; background:#6c757d; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">關閉報表</button>
-                </div>
-            `;
-            document.body.insertAdjacentHTML('beforeend', reportHtml);
-        }
-
-        // 3. 實作人氣推薦計算 (存入 localStorage)
-        function calculateTopItems() {
-            const itemCounts = {};
-            orders.forEach(order => {
-                try {
-                    const items = JSON.parse(order.parsed_items || '[]');
-                    items.forEach(it => {
-                        itemCounts[it.name] = (itemCounts[it.name] || 0) + (it.quantity || 1);
-                    });
-                } catch(e) { console.error("解析品項失敗", e); }
-            });
-
-            const top5 = Object.entries(itemCounts)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 5)
-                .map(entry => entry[0]);
-
-            localStorage.setItem('popular_items', JSON.stringify(top5));
-            alert(
-                `🔥 本店今日人氣排行榜 TOP 5\n` +
-                `----------------------\n` +
-                `1. ${top5[0] || '---'}\n` +
-                `2. ${top5[1] || '---'}\n` +
-                `3. ${top5[2] || '---'}\n` +
-                `4. ${top5[3] || '---'}\n` +
-                `5. ${top5[4] || '---'}\n` +
-                `----------------------\n` +
-                `✅ 系統已將 👑 皇冠標籤同步至點餐頁面！`
-            );
-        }
-
-        // 4. 實作 CSV 匯出
-        function exportDailyReport() {
-            let csv = "\uFEFF訂單ID,桌號,金額,時間\n";
-            orders.forEach(o => {
-                csv += `${o.id},${o.table_number || '外帶'},${o.total_price},${o.created_at}\n`;
-            });
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = `今日報表_${new Date().toLocaleDateString()}.csv`;
-            link.click();
-        }
-
+        
         // 測試API連線
         async function testApiConnection() {
             try {
