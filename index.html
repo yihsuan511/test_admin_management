@@ -1410,55 +1410,74 @@ async function assignTableFromDropdown(orderId) {
         }        
         //刪除小菜功能
         async function removeSideDishes(orderId) {
-        try {
-            const orderCard = document.querySelector(`[data-order-id="${orderId}"]`);
-            if (!orderCard) return showMessage('找不到訂單卡片', 'error');
-
-            const selects = orderCard.querySelectorAll('.side-dishes select');
-            const selectedSides = [];
-
-            selects.forEach(select => {
-                const qty = parseInt(select.value, 10) || 0;
-                const name = select.dataset.name || '';
-                if (qty > 0 && name) {
-                    selectedSides.push({ item_name: name, quantity: qty });
+            try {
+                const orderCard = document.querySelector(`[data-order-id="${orderId}"]`);
+                if (!orderCard) return showMessage('找不到訂單卡片', 'error');
+    
+                const selects = orderCard.querySelectorAll('.side-dishes select');
+                const selectedSides = [];
+    
+                selects.forEach(select => {
+                    const qty = parseInt(select.value, 10) || 0;
+                    const name = select.dataset.name || '';
+                    if (qty > 0 && name) {
+                        selectedSides.push({ item_name: name, quantity: qty });
+                    }
+                });
+    
+                if (selectedSides.length === 0) {
+                    showMessage('請先輸入要刪除的小菜數量', 'error');
+                    return;
                 }
-            });
-
-            if (selectedSides.length === 0) {
-                showMessage('請先輸入要刪除的小菜數量', 'error');
-                return;
+    
+                const response = await fetch(`${API_BASE_URL}/orders/${orderId}/remove-sides`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sideDishes: selectedSides })
+                });
+    
+    
+                if (!response.ok) throw new Error(`API錯誤 ${response.status}`);
+    
+    
+                const data = await response.json();
+                console.log('刪除小菜 API 回傳：', data);
+    
+                // 更新前端 orders
+                if (data.updated_order) {
+                    const updated = data.updated_order;
+                    updated.parsed_items = updated.items || [];
+                    updated.total_price = Number(updated.total_price) || 0;
+                    const idx = orders.findIndex(o => o.id == orderId);
+                    if (idx !== -1) orders[idx] = { ...orders[idx], ...updated };
+                    renderOrders();
+                    showMessage(`訂單 #${orderId} 已刪除小菜並更新金額`, 'success');
+                }
+            } catch (err) {
+                console.error('removeSideDishes 錯誤：', err);
+                showMessage(`刪除小菜失敗：${err.message}`, 'error');
             }
-
-            const response = await fetch(`${API_BASE_URL}/orders/${orderId}/remove-sides`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sideDishes: selectedSides })
-            });
-
-
-            if (!response.ok) throw new Error(`API錯誤 ${response.status}`);
-
-
-            const data = await response.json();
-            console.log('刪除小菜 API 回傳：', data);
-
-            // 更新前端 orders
-            if (data.updated_order) {
-                const updated = data.updated_order;
-                updated.parsed_items = updated.items || [];
-                updated.total_price = Number(updated.total_price) || 0;
-                const idx = orders.findIndex(o => o.id == orderId);
-                if (idx !== -1) orders[idx] = { ...orders[idx], ...updated };
-                renderOrders();
-                showMessage(`訂單 #${orderId} 已刪除小菜並更新金額`, 'success');
-            }
-        } catch (err) {
-            console.error('removeSideDishes 錯誤：', err);
-            showMessage(`刪除小菜失敗：${err.message}`, 'error');
         }
-    }
 
+        function showRevenueReport(period) {
+         const now = new Date();
+         let filtered;
+            
+         if (period === 'today') {
+             filtered = orders.filter(o => isToday(o.created_at));
+         } else if (period === 'month') {
+              filtered = orders.filter(o => {
+                   const date = new Date(o.created_at);
+                   return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+              });
+          }
+
+           const totalRevenue = filtered.reduce((sum, o) => sum + Number(o.total_price), 0);
+           const orderCount = filtered.length;
+            
+          alert(`【${period === 'today' ? '今日' : '本月'}報表分析】\n總營收：NT$ ${totalRevenue}\n總訂單數：${orderCount}\n平均客單價：NT$ ${(totalRevenue/orderCount || 0).toFixed(0)}`);
+        }
+        
         // 測試API連線
         async function testApiConnection() {
             try {
@@ -1549,4 +1568,5 @@ async function assignTableFromDropdown(orderId) {
         });
     </script>
 </body>
+
 </html>
