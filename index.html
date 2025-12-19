@@ -1448,30 +1448,32 @@ async function assignTableFromDropdown(orderId) {
 
         function filterOrders(filterType) {
             currentFilter = filterType;
-
-            // 1. 切換按鈕樣式
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.getAttribute('data-filter') === filterType);
+            console.log('切換過濾器至:', filterType);
+            
+            // 1. 更新按鈕的 active 樣式
+            const buttons = document.querySelectorAll('.filter-btn');
+            buttons.forEach(btn => {
+                if (btn.getAttribute('data-filter') === filterType) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
             });
 
-            // 2. 顯示對應功能的按鈕
+            // 2. 重點：控制進階工具按鈕的顯示 (這段要加上去)
             const toolsDiv = document.getElementById('advanced-tools');
-            toolsDiv.innerHTML = ''; 
-
             if (filterType === 'all') {
-                // 在「今日總覽」模式下，提供結帳與匯出功能
                 toolsDiv.innerHTML = `
-                    <button class="refresh-btn" style="background: #28a745;" onclick="showRevenueReport()">💰 今日收銀報表</button>
-                    <button class="refresh-btn" style="background: #17a2b8;" onclick="exportDailyReport()">📥 匯出 CSV (做帳用)</button>
+                    <button class="status-btn completed" style="background:#28a745; color:white; margin-right:10px;" onclick="showRevenueReport()">📊 今日報表分析</button>
+                    <button class="status-btn pending_payment" style="background:#17a2b8; color:white; margin-right:10px;" onclick="exportDailyReport()">📥 匯出今日CSV</button>
+                    <button class="status-btn" style="background:#ffc107; color:black;" onclick="calculateTopItems()">👑 產出人氣推薦</button>
                 `;
-            } else if (filterType === 'history') {
-                // 在「歷史訂單」模式下，預留分析功能
-                toolsDiv.innerHTML = `
-                    <button class="refresh-btn" style="background: #6f42c1;" onclick="alert('載入業績趨勢圖...')">📈 查看年度營收折線圖</button>
-                `;
+            } else {
+                toolsDiv.innerHTML = ''; // 非「全部」模式時隱藏
             }
 
-            renderOrders(); 
+            // 3. 執行渲染
+            renderOrders();
         }
 
         function calculateTopItems() {
@@ -1498,6 +1500,29 @@ async function assignTableFromDropdown(orderId) {
             // 儲存到 localStorage 讓「外帶.html」可以讀取
             localStorage.setItem('popular_items', JSON.stringify(top5));
         }
+
+        function showRevenueReport() {
+            // 1. 計算今天的訂單（你原本的邏輯中，全部就是今天）
+            const totalRevenue = orders.reduce((sum, o) => sum + Number(o.total_price || 0), 0);
+            const orderCount = orders.length;
+            const completedCount = orders.filter(o => o.status === 'completed').length;
+            
+            // 2. 製作一個漂亮的彈窗
+            const reportHtml = `
+                <div id="reportModal" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:30px; border-radius:15px; box-shadow:0 0 30px rgba(0,0,0,0.5); z-index:9999; text-align:center; min-width:300px;">
+                    <h2 style="color:#2c3e50; margin-bottom:20px;">📈 今日營業報表</h2>
+                    <div style="font-size:18px; line-height:2;">
+                        <p>總營收：<strong style="color:#28a745; font-size:24px;">NT$ ${totalRevenue.toLocaleString()}</strong></p>
+                        <p>總訂單數：<strong>${orderCount} 筆</strong></p>
+                        <p>已完成數：<strong>${completedCount} 筆</strong></p>
+                        <p>平均客單：<strong>NT$ ${(totalRevenue/orderCount || 0).toFixed(0)}</strong></p>
+                    </div>
+                    <button onclick="this.parentElement.remove()" style="margin-top:20px; padding:10px 20px; background:#6c757d; color:white; border:none; border-radius:5px; cursor:pointer;">關閉分析</button>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', reportHtml);
+        }
+
         // 測試API連線
         async function testApiConnection() {
             try {
