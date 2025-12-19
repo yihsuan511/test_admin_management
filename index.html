@@ -658,15 +658,7 @@
                 <button class="filter-btn" data-filter="completed">已完成</button>
                 <button class="filter-btn" data-filter="history">歷史訂單</button>
             </div>
-            <div class="filter-group">
-                <button class="filter-btn active" onclick="filterOrders('all')">全部</button>
-                </div>
-            
-            <div class="report-group" style="display: flex; gap: 10px;">
-                <button class="refresh-btn" style="background: #28a745;" onclick="showRevenueReport('today')">今日營收</button>
-                <button class="refresh-btn" style="background: #17a2b8;" onclick="showRevenueReport('month')">本月分析</button>
-                <button class="refresh-btn" id="refreshBtn" onclick="manualRefresh()">🔄 重新整理</button>
-            </div>
+            <button class="refresh-btn" onclick="loadOrders()">🔄 重新整理</button>
         </div>
 
         <!-- 訂單列表 -->
@@ -1283,57 +1275,57 @@
             }
         }
 
-        // 新增：從下拉選單分配桌號的函數
-        async function assignTableFromDropdown(orderId) {
-            try {
-                const tableSelect = document.getElementById(`tableSelect-${orderId}`);
-                const tableNumber = tableSelect?.value?.trim();
-            
-                if (!tableNumber) {
-                    showMessage('請選擇桌號', 'error');
-                    return;
-                }
-
-                // 修正：同時傳送 status 和 table_number
-                const response = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        status: 'pending',
-                        table_number: tableNumber  // ✅ 加入這一行
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`API錯誤 ${response.status}`);
-                }
-
-                // 更新本地訂單資料
-                const orderIndex = orders.findIndex(o => o.id == orderId);
-                if (orderIndex !== -1) {
-                    orders[orderIndex].table_number = tableNumber;
-                    orders[orderIndex].status = 'pending';
-                }
-
-                // 自動切換到待處理分類
-                currentFilter = 'pending';
-                const filterButtons = document.querySelectorAll('.filter-btn');
-                filterButtons.forEach(btn => btn.classList.remove('active'));
-                const pendingBtn = document.querySelector('[data-filter="pending"]');
-                if (pendingBtn) {
-                    pendingBtn.classList.add('active');
-                }
-
-                renderOrders();
-            
-                const displayText = tableNumber === '外帶' ? '外帶' : `${tableNumber}號桌`;
-                showMessage(`訂單 #${orderId} 已分配至 ${displayText}，已切換至待處理`, 'success');
-
-            } catch (error) {
-                console.error('分配桌號失敗:', error);
-                showMessage(`分配桌號失敗: ${error.message}`, 'error');
-            }
+// 新增：從下拉選單分配桌號的函數
+async function assignTableFromDropdown(orderId) {
+    try {
+        const tableSelect = document.getElementById(`tableSelect-${orderId}`);
+        const tableNumber = tableSelect?.value?.trim();
+       
+        if (!tableNumber) {
+            showMessage('請選擇桌號', 'error');
+            return;
         }
+
+        // 修正：同時傳送 status 和 table_number
+        const response = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                status: 'pending',
+                table_number: tableNumber  // ✅ 加入這一行
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`API錯誤 ${response.status}`);
+        }
+
+        // 更新本地訂單資料
+        const orderIndex = orders.findIndex(o => o.id == orderId);
+        if (orderIndex !== -1) {
+            orders[orderIndex].table_number = tableNumber;
+            orders[orderIndex].status = 'pending';
+        }
+
+        // 自動切換到待處理分類
+        currentFilter = 'pending';
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        filterButtons.forEach(btn => btn.classList.remove('active'));
+        const pendingBtn = document.querySelector('[data-filter="pending"]');
+        if (pendingBtn) {
+            pendingBtn.classList.add('active');
+        }
+
+        renderOrders();
+       
+        const displayText = tableNumber === '外帶' ? '外帶' : `${tableNumber}號桌`;
+        showMessage(`訂單 #${orderId} 已分配至 ${displayText}，已切換至待處理`, 'success');
+
+    } catch (error) {
+        console.error('分配桌號失敗:', error);
+        showMessage(`分配桌號失敗: ${error.message}`, 'error');
+    }
+}
 
         // addSideDishes：更穩健的前端實作（有錯誤處理、檢查 response.ok、直接更新本地 orders）
         async function addSideDishes(orderId) {
@@ -1467,36 +1459,7 @@
             }
         }
 
-        function showRevenueReport(period) {
-            const now = new Date();
-            let filtered;
-            
-            if (period === 'today') {
-                filtered = orders.filter(o => isToday(o.created_at));
-            } else {
-                filtered = orders.filter(o => {
-                    const date = new Date(o.created_at);
-                    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-                });
-            }
-
-            const totalRevenue = filtered.reduce((sum, o) => sum + Number(o.total_price), 0);
-            const orderCount = filtered.length;
-            
-            // 改用更漂亮的畫面顯示，而不是只有 alert
-            const reportHtml = `
-                <div id="reportModal" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:30px; border-radius:15px; box-shadow:0 0 20px rgba(0,0,0,0.3); z-index:1000; min-width:300px;">
-                    <h2 style="margin-bottom:20px; color:#2c3e50; border-bottom:2px solid #eee; padding-bottom:10px;">📊 ${period === 'today' ? '今日' : '本月'}營收報表</h2>
-                    <p style="font-size:18px; margin:10px 0;">總營收：<strong style="color:#28a745;">NT$ ${totalRevenue.toLocaleString()}</strong></p>
-                    <p style="font-size:18px; margin:10px 0;">訂單數：<strong>${orderCount} 筆</strong></p>
-                    <p style="font-size:18px; margin:10px 0;">客單價：<strong>NT$ ${(totalRevenue/orderCount || 0).toFixed(0)}</strong></p>
-                    <button onclick="document.getElementById('reportModal').remove()" style="margin-top:20px; width:100%; padding:10px; background:#6c757d; color:white; border:none; border-radius:5px; cursor:pointer;">關閉視窗</button>
-                </div>
-            `;
-            
-            document.body.insertAdjacentHTML('beforeend', reportHtml);
-        }
-
+        
         // 測試API連線
         async function testApiConnection() {
             try {
@@ -1588,4 +1551,3 @@
     </script>
 </body>
 </html>
-
