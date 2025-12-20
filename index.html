@@ -1093,8 +1093,8 @@
             // 更新統計
             updateStats();
         }
-        function updateTotal(orderId) {
-            const orderCard = document.querySelector(`[data-order-id="${orderId}"]`);
+        function updateTotal(orderNo) {
+            const orderCard = document.querySelector(`[data-order-id="${orderNo}"]`);
             if (!orderCard) return;
 
             const inputs = orderCard.querySelectorAll('.side-dishes select');
@@ -1110,7 +1110,7 @@
             const totalEl = orderCard.querySelector('.order-total');
             if (totalEl) {
                 // 取得訂單原始金額
-                const order = orders.find(o => o.id == orderId);
+                const order = orders.find(o => o.id == orderNo);
                 const baseTotal = Number(order?.total_price || 0);
                 totalEl.textContent = `NT$ ${(baseTotal + sideTotal).toFixed(0)}`;
             }
@@ -1130,17 +1130,17 @@
         }
 
         // 更新訂單狀態（呼叫真實API）
-        async function updateOrderStatus(orderId, newStatus) {
+        async function updateOrderStatus(orderNo, newStatus) {
             try {
                 // 檢查是否已經是該狀態
-                const currentOrder = orders.find(o => o.id == orderId);
+                const currentOrder = orders.find(o => o.id == orderNo);
                 if (currentOrder && currentOrder.status === newStatus) {
-                    console.log(`訂單 ${orderId} 已經是 ${newStatus} 狀態`);
+                    console.log(`訂單 ${orderNo} 已經是 ${newStatus} 狀態`);
                     return;
                 }
 
                 // 停用按鈕防止重複點擊
-                const orderCard = document.querySelector(`[data-order-id="${orderId}"]`);
+                const orderCard = document.querySelector(`[data-order-id="${orderNo}"]`);
                 if (orderCard) {
                     const buttons = orderCard.querySelectorAll('.status-btn');
                     buttons.forEach(btn => btn.disabled = true);
@@ -1153,10 +1153,10 @@
                 }
 
 
-                console.log(`正在更新訂單 ${orderId} 狀態為: ${newStatus}`);
+                console.log(`正在更新訂單 ${orderNo} 狀態為: ${newStatus}`);
 
 
-                const response = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
+                const response = await fetch(`${API_BASE_URL}/orders/${orderNo}/status`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1177,14 +1177,14 @@
 
 
                 // 立即更新本地狀態
-                const orderIndex = orders.findIndex(o => o.id == orderId);
+                const orderIndex = orders.findIndex(o => o.id == orderNo);
                 if (orderIndex !== -1) {
                     orders[orderIndex].status = newStatus;
                    
                     // 如果當前在待處理篩選器，且狀態改為已完成，則從畫面移除
                     if (currentFilter === 'pending' && newStatus === 'completed') {
                         // 重新取得訂單卡片元素
-                        const orderCardElement = document.querySelector(`[data-order-id="${orderId}"]`);
+                        const orderCardElement = document.querySelector(`[data-order-id="${orderNo}"]`);
                        
                         // 添加一個動畫效果，讓訂單卡片滑出
                         if (orderCardElement) {
@@ -1205,7 +1205,7 @@
                 }
 
 
-                showMessage(`訂單 #${orderId} 狀態已更新為「${getStatusText(newStatus)}」`, 'success');
+                showMessage(`訂單 #${orderNo} 狀態已更新為「${getStatusText(newStatus)}」`, 'success');
 
 
             } catch (error) {
@@ -1276,9 +1276,9 @@
         }
 
 // 新增：從下拉選單分配桌號的函數
-async function assignTableFromDropdown(orderId) {
+async function assignTableFromDropdown(orderNo) {
     try {
-        const tableSelect = document.getElementById(`tableSelect-${orderId}`);
+        const tableSelect = document.getElementById(`tableSelect-${orderNo}`);
         const tableNumber = tableSelect?.value?.trim();
        
         if (!tableNumber) {
@@ -1287,7 +1287,7 @@ async function assignTableFromDropdown(orderId) {
         }
 
         // 修正：同時傳送 status 和 table_number
-        const response = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
+        const response = await fetch(`${API_BASE_URL}/orders/${orderNo}/status`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1301,7 +1301,7 @@ async function assignTableFromDropdown(orderId) {
         }
 
         // 更新本地訂單資料
-        const orderIndex = orders.findIndex(o => o.id == orderId);
+        const orderIndex = orders.findIndex(o => o.id == orderNo);
         if (orderIndex !== -1) {
             orders[orderIndex].table_number = tableNumber;
             orders[orderIndex].status = 'pending';
@@ -1319,7 +1319,7 @@ async function assignTableFromDropdown(orderId) {
         renderOrders();
        
         const displayText = tableNumber === '外帶' ? '外帶' : `${tableNumber}號桌`;
-        showMessage(`訂單 #${orderId} 已分配至 ${displayText}，已切換至待處理`, 'success');
+        showMessage(`訂單 #${orderNo} 已分配至 ${displayText}，已切換至待處理`, 'success');
 
     } catch (error) {
         console.error('分配桌號失敗:', error);
@@ -1328,9 +1328,9 @@ async function assignTableFromDropdown(orderId) {
 }
 
         // addSideDishes：更穩健的前端實作（有錯誤處理、檢查 response.ok、直接更新本地 orders）
-        async function addSideDishes(orderId) {
+        async function addSideDishes(orderNo) {
             try {
-                const orderCard = document.querySelector(`[data-order-id="${orderId}"]`);
+                const orderCard = document.querySelector(`[data-order-id="${orderNo}"]`);
                 if (!orderCard) {
                     showMessage('找不到該訂單卡片，請重新整理', 'error');
                     return;
@@ -1368,7 +1368,7 @@ async function assignTableFromDropdown(orderId) {
                 }
 
                 // 呼叫後端 API
-                const response = await fetch(`${API_BASE_URL}/orders/${orderId}/add-sides`, {
+                const response = await fetch(`${API_BASE_URL}/orders/${orderNo}/add-sides`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ sideDishes: selectedSides })
@@ -1392,12 +1392,12 @@ async function assignTableFromDropdown(orderId) {
 
 
                     // 更新本地 orders 陣列（避免整頁 reload）
-                    const idx = orders.findIndex(o => o.id == orderId);
+                    const idx = orders.findIndex(o => o.id == orderNo);
                     if (idx !== -1) {
                         orders[idx] = { ...orders[idx], ...updated };
                     }
                     renderOrders();
-                    showMessage(`訂單 #${orderId} 已加入小菜並更新金額`, 'success');
+                    showMessage(`訂單 #${orderNo} 已加入小菜並更新金額`, 'success');
                 } else {
                     showMessage('伺服器回傳格式錯誤，請查看伺服器日誌', 'error');
                 }
@@ -1409,9 +1409,9 @@ async function assignTableFromDropdown(orderId) {
             }
         }        
         //刪除小菜功能
-        async function removeSideDishes(orderId) {
+        async function removeSideDishes(orderNo) {
             try {
-                const orderCard = document.querySelector(`[data-order-id="${orderId}"]`);
+                const orderCard = document.querySelector(`[data-order-id="${orderNo}"]`);
                 if (!orderCard) return showMessage('找不到訂單卡片', 'error');
 
                 const selects = orderCard.querySelectorAll('.side-dishes select');
@@ -1430,7 +1430,7 @@ async function assignTableFromDropdown(orderId) {
                     return;
                 }
 
-                const response = await fetch(`${API_BASE_URL}/orders/${orderId}/remove-sides`, {
+                const response = await fetch(`${API_BASE_URL}/orders/${orderNo}/remove-sides`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ sideDishes: selectedSides })
@@ -1448,10 +1448,10 @@ async function assignTableFromDropdown(orderId) {
                     const updated = data.updated_order;
                     updated.parsed_items = updated.items || [];
                     updated.total_price = Number(updated.total_price) || 0;
-                    const idx = orders.findIndex(o => o.id == orderId);
+                    const idx = orders.findIndex(o => o.id == orderNo);
                     if (idx !== -1) orders[idx] = { ...orders[idx], ...updated };
                     renderOrders();
-                    showMessage(`訂單 #${orderId} 已刪除小菜並更新金額`, 'success');
+                    showMessage(`訂單 #${orderNo} 已刪除小菜並更新金額`, 'success');
                 }
             } catch (err) {
                 console.error('removeSideDishes 錯誤：', err);
